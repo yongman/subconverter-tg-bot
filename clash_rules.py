@@ -78,6 +78,7 @@ async def add_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def del_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Delete a rule matched the input domain"""
     rule = update.message.text.lstrip('/del').strip()
+    lines=[]
     with open(FILE_NAME, 'r') as f:
         lines = f.readlines()
     with open(FILE_NAME + '.tmp', 'w') as f:
@@ -85,8 +86,11 @@ async def del_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             parts = line.split(',')
             if len(parts) != 2:
                 continue
-            if parts[1] == rule:
+            if parts[1].strip() == rule:
                 continue
+            print(parts[1].strip())
+            print(rule)
+            print(line)
             f.write(line)
     os.rename(FILE_NAME + '.tmp', FILE_NAME)
     resp = 'Delete {} done!'.format(rule)
