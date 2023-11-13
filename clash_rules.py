@@ -48,8 +48,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     help_msg = """
     echo: echo you input
     help: print this message
-    add: add a new DOMAIN-SUFFIX rules to Proxy.list and call clash http api to reload
-    del: del the rule matched the input
+    add: add a new DOMAIN-SUFFIX rules to {Name}.list and call clash http api to reload. eg. /add google.com Google
+    del: del the rule matched the input. eg. /del youtube.com YouTube
     """
     await update.message.reply_text(help_msg)
 
@@ -62,11 +62,23 @@ FILE_NAME = os.environ.get('FILE_NAME')
 POST_CMD = os.environ.get('POST_CMD')
 
 async def add_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Add a DOMAIN-SUFFIX rule to Proxy.list"""
-    rule = update.message.text.lstrip('/add').strip()
-    with open(FILE_NAME, 'a') as f:
+    """Add a DOMAIN-SUFFIX rule to {Proxy}.list"""
+    # Default to Proxy.list if not specified in command
+    file_name = FILE_NAME
+    rule_and_file = update.message.text.lstrip('/add').strip().split()
+    if len(rule_and_file) == 2:
+        file_name = '{}.list'.format(rule_and_file[1])
+
+    # check file if exists
+    if not os.path.exists(file_name):
+        resp = 'Rule file {} not exists'.format(file_name)
+        await update.message.reply_text(resp)
+        return
+
+    rule = rule_and_file[0].strip()
+    with open(file_name, 'a') as f:
         f.write('DOMAIN-SUFFIX,{}\n'.format(rule))
-    resp = 'Add {} done!'.format(rule)
+    resp = 'Add {} to {} done!'.format(rule, file_name)
     if POST_CMD is not None:
         result = subprocess.run(POST_CMD, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.returncode == 0:
@@ -77,11 +89,23 @@ async def add_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def del_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Delete a rule matched the input domain"""
-    rule = update.message.text.lstrip('/del').strip()
+    # Default to Proxy.list if not specified in command
+    file_name = FILE_NAME
+    rule_and_file = update.message.text.lstrip('/del').strip().split()
+    if len(rule_and_file) == 2:
+        file_name = '{}.list'.format(rule_and_file[1])
+
+    # check file if exists
+    if not os.path.exists(file_name):
+        resp = 'Rule file {} not exists'.format(file_name)
+        await update.message.reply_text(resp)
+        return
+
+    rule = rule_and_file[0].strip()
     lines=[]
-    with open(FILE_NAME, 'r') as f:
+    with open(file_name, 'r') as f:
         lines = f.readlines()
-    with open(FILE_NAME + '.tmp', 'w') as f:
+    with open(file_name + '.tmp', 'w') as f:
         for line in lines:
             parts = line.split(',')
             if len(parts) != 2:
@@ -92,8 +116,8 @@ async def del_rule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             print(rule)
             print(line)
             f.write(line)
-    os.rename(FILE_NAME + '.tmp', FILE_NAME)
-    resp = 'Delete {} done!'.format(rule)
+    os.rename(file_name + '.tmp', file_name)
+    resp = 'Delete {} from {} done!'.format(rule, file_name)
     if POST_CMD is not None:
         result = subprocess.run(POST_CMD, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.returncode == 0:
